@@ -8,22 +8,6 @@
 #include <crypto/pkcs7.h>
 #include <crypto/hash_info.h>
 
-struct pefile_context {
-	unsigned	header_size;
-	unsigned	image_checksum_offset;
-	unsigned	cert_dirent_offset;
-	unsigned	n_data_dirents;
-	unsigned	n_sections;
-	unsigned	certs_size;
-	unsigned	sig_offset;
-	unsigned	sig_len;
-	const struct section_header *secs;
-
-	/* PKCS#7 MS Individual Code Signing content */
-	const void	*digest;		/* Digest */
-	unsigned	digest_len;		/* Digest length */
-	const char	*digest_algo;		/* Digest algorithm */
-};
 
 #define kenter(FMT, ...)					\
 	pr_devel("==> %s("FMT")\n", __func__, ##__VA_ARGS__)
