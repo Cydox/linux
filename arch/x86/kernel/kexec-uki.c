@@ -67,7 +67,7 @@ static int pefile_parse_binary(const void *pebuf, unsigned int pelen,
 
 	chkaddr(cursor, mz->peaddr, sizeof(*pe));
 	pe = pebuf + mz->peaddr;
-	pr_info("pe header location: 0x%lx", mz->peaddr);
+	pr_info("pe header location: 0x%x", mz->peaddr);
 	pr_info("pe header n sections: 0x%x", pe->sections);
 	if (pe->magic != PE_MAGIC)
 		return -ELIBBAD;
