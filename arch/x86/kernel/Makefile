@@ -103,6 +103,7 @@ obj-$(CONFIG_KEXEC_CORE)	+= relocate_kernel_$(BITS).o crash.o
 obj-$(CONFIG_KEXEC_FILE)	+= kexec-bzimage64.o
 CFLAGS_kexec-bzimage64.o := -DDEBUG
 obj-$(CONFIG_KEXEC_FILE)	+= kexec-uki.o
+obj-$(CONFIG_KEXEC_FILE)	+= parse_pefile.o
 CFLAGS_kexec-uki.o := -DDEBUG
 obj-$(CONFIG_CRASH_DUMP)	+= crash_dump_$(BITS).o
 obj-y				+= kprobes/
