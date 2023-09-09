@@ -39,6 +39,11 @@ static int uki_probe(const char *buf, unsigned long len)
 	if (r)
 		return ret;
 
+	if (!find_section(&pe_ctx, ".linux") ||
+	    !find_section(&pe_ctx, ".initrd") ||
+	    !find_section(&pe_ctx, ".cmdline"))
+		return ret;
+
 
 	return 0;
 }
