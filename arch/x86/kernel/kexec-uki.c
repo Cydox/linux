@@ -12,20 +12,35 @@
 #include <linux/kernel.h>
 #include "linux/pe.h"
 #include <linux/kexec.h>
+#include "linux/err.h"
 
 #include <asm/kexec-uki.h>
 #include <asm/kexec-bzimage64.h>
 #include <asm/parse_pefile.h>
 
+static const struct section_header *find_section(struct pefile_context *ctx, const char *name) {
+	for (int i = 0; i < ctx->n_sections; i++) {
+		const struct section_header *sec = &ctx->secs[i];
+
+		if (!strncmp(sec->name, name, ARRAY_SIZE(sec->name)))
+			return sec;
+	}
+
+	return NULL;
+}
 
 static int uki_probe(const char *buf, unsigned long len)
 {
 	int ret = -ENOEXEC;
+	struct pefile_context pe_ctx;
 
-	pr_warn("Assuming it's a UKI in every case rn\n");
-	ret = 0;
+	int r = pefile_parse_binary(buf, len, &pe_ctx);
 
-	return ret;
+	if (r)
+		return ret;
+
+
+	return 0;
 }
 
 static void *uki_load(struct kimage *image, char *kernel,
@@ -42,32 +57,21 @@ static void *uki_load(struct kimage *image, char *kernel,
 	pr_debug("pefile_parse_binary return %d, number of sections: %d",
 	         r, pe_ctx.n_sections);
 
-	char *_kernel, *_initrd, *_cmdline;
-	uint32_t _kernel_len, _initrd_len, _cmdline_len;
+	const struct section_header *sec_linux = find_section(&pe_ctx, ".linux");
+	const struct section_header *sec_initrd = find_section(&pe_ctx, ".initrd");
+	const struct section_header *sec_cmdline = find_section(&pe_ctx, ".cmdline");
 
-	for (int i = 0; i < pe_ctx.n_sections; i++) {
-		struct section_header sec = pe_ctx.secs[i];
-		
-		if (!strncmp(sec.name, ".linux", ARRAY_SIZE(sec.name))) {
-			_kernel = kernel + pe_ctx.secs[i].data_addr;
-			_kernel_len = pe_ctx.secs[i].raw_data_size;
-		} else if (!strncmp(sec.name, ".initrd", ARRAY_SIZE(sec.name))) {
-			_initrd = kernel + pe_ctx.secs[i].data_addr;
-			_initrd_len = pe_ctx.secs[i].raw_data_size;
-		} else if (!strncmp(sec.name, ".cmdline", ARRAY_SIZE(sec.name))) {
-			_cmdline = kernel + pe_ctx.secs[i].data_addr;
-			_cmdline_len = pe_ctx.secs[i].raw_data_size;
-		}
-	}
+	if (!sec_linux || !sec_initrd || !sec_cmdline)
+		return ERR_PTR(-EINVAL);
 
-	void *ret = bzImage64_load(
+	void *ret = kexec_bzImage64_ops.load(
 		image,
-		_kernel,
-		_kernel_len,
-		_initrd,
-		_initrd_len,
-		_cmdline,
-	        _cmdline_len
+		kernel + sec_linux->data_addr,
+		sec_linux->raw_data_size,
+		kernel + sec_initrd->data_addr,
+		sec_initrd->raw_data_size,
+		kernel + sec_cmdline->data_addr,
+	        sec_cmdline->raw_data_size
 	);
 
 	if (IS_ERR(ret)) {
@@ -79,7 +83,7 @@ static void *uki_load(struct kimage *image, char *kernel,
 
 static int uki_cleanup(void *loader_data)
 {
-	return bzImage64_cleanup(loader_data);
+	return kexec_bzImage64_ops.cleanup(loader_data);
 }
 
 const struct kexec_file_ops kexec_uki_ops = {

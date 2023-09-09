@@ -382,7 +382,7 @@ static int bzImage64_probe(const char *buf, unsigned long len)
 	return ret;
 }
 
-void *bzImage64_load(struct kimage *image, char *kernel,
+static void *bzImage64_load(struct kimage *image, char *kernel,
 			    unsigned long kernel_len, char *initrd,
 			    unsigned long initrd_len, char *cmdline,
 			    unsigned long cmdline_len)
@@ -582,7 +582,7 @@ out_free_params:
 }
 
 /* This cleanup function is called after various segments have been loaded */
-int bzImage64_cleanup(void *loader_data)
+static int bzImage64_cleanup(void *loader_data)
 {
 	struct bzimage64_data *ldata = loader_data;
 
