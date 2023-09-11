@@ -366,6 +366,7 @@ obj-$(CONFIG_SBITMAP) += sbitmap.o
 obj-$(CONFIG_PARMAN) += parman.o
 
 obj-$(CONFIG_SIGNED_PE_FILE_VERIFICATION) += parse_pefile.o
+obj-$(CONFIG_KEXEC_FILE) += parse_pefile.o
 
 obj-y += group_cpus.o
 

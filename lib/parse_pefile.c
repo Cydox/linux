@@ -88,18 +88,17 @@ int pefile_parse_binary(const void *pebuf, unsigned int pelen,
 		(unsigned long)&ddir->certs - (unsigned long)pebuf;
 	ctx->certs_size = ddir->certs.size;
 
-	if (!ddir->certs.virtual_address || !ddir->certs.size) {
-		pr_warn("Unsigned PE binary\n");
-		return -ENODATA;
-	}
+	if (ddir->certs.virtual_address && ddir->certs.size) {
 
-	chkaddr(ctx->header_size, ddir->certs.virtual_address,
-		ddir->certs.size);
-	ctx->sig_offset = ddir->certs.virtual_address;
-	ctx->sig_len = ddir->certs.size;
-	pr_debug("cert = %x @%x [%*ph]\n",
-		 ctx->sig_len, ctx->sig_offset,
-		 ctx->sig_len, pebuf + ctx->sig_offset);
+		chkaddr(ctx->header_size, ddir->certs.virtual_address,
+			ddir->certs.size);
+		ctx->sig_offset = ddir->certs.virtual_address;
+		ctx->sig_len = ddir->certs.size;
+		pr_debug("cert = %x @%x [%*ph]\n",
+			 ctx->sig_len, ctx->sig_offset,
+			 ctx->sig_len, pebuf + ctx->sig_offset);
+
+	}
 
 	ctx->n_sections = pe->sections;
 	if (ctx->n_sections > (ctx->header_size - cursor) / sizeof(*sec))
