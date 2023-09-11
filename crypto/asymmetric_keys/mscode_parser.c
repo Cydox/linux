@@ -11,7 +11,7 @@
 #include <linux/err.h>
 #include <linux/oid_registry.h>
 #include <crypto/pkcs7.h>
-#include "verify_pefile.h"
+#include <linux/parse_pefile.h>
 #include "mscode.asn1.h"
 
 /*
