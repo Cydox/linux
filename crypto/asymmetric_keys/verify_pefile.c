@@ -334,6 +334,13 @@ int verify_pefile_signature(const void *pebuf, unsigned pelen,
 	if (ret < 0)
 		return ret;
 
+	const struct data_dirent *certs = pebuf + ctx.cert_dirent_offset;
+
+	if (!certs->virtual_address || !certs->size) {
+		pr_warn("Unsigned PE binary\n");
+		return -ENODATA;
+	}
+
 	ret = pefile_strip_sig_wrapper(pebuf, &ctx);
 	if (ret < 0)
 		return ret;
@@ -342,8 +349,10 @@ int verify_pefile_signature(const void *pebuf, unsigned pelen,
 				     pebuf + ctx.sig_offset, ctx.sig_len,
 				     trusted_keys, usage,
 				     mscode_parse, &ctx);
-	if (ret < 0)
+	if (ret < 0) {
+		pr_warn("invalid PE file signature\n");
 		goto error;
+	}
 
 	pr_debug("Digest: %u [%*ph]\n",
 		 ctx.digest_len, ctx.digest_len, ctx.digest);

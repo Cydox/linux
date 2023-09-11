@@ -25,6 +25,7 @@
 #include <asm/io_apic.h>
 #include <asm/debugreg.h>
 #include <asm/kexec-bzimage64.h>
+#include <asm/kexec-uki.h>
 #include <asm/setup.h>
 #include <asm/set_memory.h>
 #include <asm/cpu.h>
@@ -81,6 +82,7 @@ static int map_acpi_tables(struct x86_mapping_info *info, pgd_t *level4p) { retu
 #ifdef CONFIG_KEXEC_FILE
 const struct kexec_file_ops * const kexec_file_loaders[] = {
 		&kexec_bzImage64_ops,
+		&kexec_uki_ops,
 		NULL
 };
 #endif
