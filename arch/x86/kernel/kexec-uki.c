@@ -19,19 +19,18 @@
 #include <asm/kexec-bzimage64.h>
 #include <linux/parse_pefile.h>
 
-static int find_section(struct pefile_context *ctx, const char *name,
-			const struct section_header **sec)
+const struct section_header *find_section(struct pefile_context *ctx,
+					  const char *name)
 {
 	for (int i = 0; i < ctx->n_sections; i++) {
-		const struct section_header *cur_sec = &ctx->secs[i];
+		const struct section_header *sec = &ctx->secs[i];
 
-		if (!strncmp(cur_sec->name, name, ARRAY_SIZE(cur_sec->name))) {
-			*sec = cur_sec;
-			return 0;
+		if (!strncmp(sec->name, name, ARRAY_SIZE(sec->name))) {
+			return sec;
 		}
 	}
 
-	return -EINVAL;
+	return ERR_PTR(-EINVAL);
 }
 
 static int uki_probe(const char *buf, unsigned long len)
@@ -39,7 +38,6 @@ static int uki_probe(const char *buf, unsigned long len)
 	int ret = -ENOEXEC;
 	int r = 0;
 	struct pefile_context pe_ctx;
-	const struct section_header *s;
 
 	memset(&pe_ctx, 0, sizeof(pe_ctx));
 	r = pefile_parse_binary(buf, len, &pe_ctx);
@@ -49,8 +47,8 @@ static int uki_probe(const char *buf, unsigned long len)
 		return ret;
 	}
 
-	if (find_section(&pe_ctx, ".linux", &s) ||
-	    find_section(&pe_ctx, ".initrd", &s)) {
+	if (IS_ERR(find_section(&pe_ctx, ".linux")) ||
+	    IS_ERR(find_section(&pe_ctx, ".initrd"))) {
 		pr_info("Not a UKI. Missing .linux, or .initrd\n");
 		return ret;
 	}
@@ -66,10 +64,10 @@ static void *uki_load(struct kimage *image, char *kernel,
 {
 	struct pefile_context pe_ctx;
 	const struct section_header *sec_linux, *sec_initrd, *sec_cmdline;
-	int r_linux, r_initrd, r_cmdline, r = 0;
+	int r = 0;
 	void *ret;
 
-	if (initrd_len || strcmp(cmdline, "") || cmdline_len != 1) {
+	if (initrd_len || cmdline_len != 1) {
 		pr_err("No manual cmdline or initrd allowed for UKIs");
 		return ERR_PTR(-EPERM);
 	}
@@ -80,14 +78,14 @@ static void *uki_load(struct kimage *image, char *kernel,
 	if (r)
 		return ERR_PTR(r);
 
-	r_linux   = find_section(&pe_ctx, ".linux", &sec_linux);
-	r_initrd  = find_section(&pe_ctx, ".initrd", &sec_initrd);
-	r_cmdline = find_section(&pe_ctx, ".cmdline", &sec_cmdline);
+	sec_linux   = find_section(&pe_ctx, ".linux");
+	sec_initrd  = find_section(&pe_ctx, ".initrd");
+	sec_cmdline = find_section(&pe_ctx, ".cmdline");
 
-	if (r_linux || r_initrd)
+	if (IS_ERR(sec_linux) || IS_ERR(sec_initrd))
 		return ERR_PTR(-EINVAL);
 
-	if (r_cmdline) {
+	if (IS_ERR(sec_cmdline)) {
 		cmdline = "";
 		cmdline_len = 1;
 	} else {
