@@ -67,11 +67,6 @@ static void *uki_load(struct kimage *image, char *kernel,
 	int r = 0;
 	void *ret;
 
-	if (initrd_len || cmdline_len != 1) {
-		pr_err("No manual cmdline or initrd allowed for UKIs");
-		return ERR_PTR(-EPERM);
-	}
-
 	memset(&pe_ctx, 0, sizeof(pe_ctx));
 	r = pefile_parse_binary(kernel, kernel_len, &pe_ctx);
 
@@ -85,10 +80,17 @@ static void *uki_load(struct kimage *image, char *kernel,
 	if (IS_ERR(sec_linux) || IS_ERR(sec_initrd))
 		return ERR_PTR(-EINVAL);
 
-	if (IS_ERR(sec_cmdline)) {
-		cmdline = "";
-		cmdline_len = 1;
-	} else {
+	if (initrd_len) {
+		pr_err("UKI does not allow manual initrd");
+		return ERR_PTR(-EPERM);
+	}
+
+	if (!IS_ERR(sec_cmdline) && cmdline_len != 1) {
+		pr_err("UKI does not allow manual cmdline");
+		return ERR_PTR(-EPERM);
+	}
+
+	if (!IS_ERR(sec_cmdline)) {
 		cmdline = kernel + sec_cmdline->data_addr;
 		cmdline_len = sec_cmdline->raw_data_size;
 	}
