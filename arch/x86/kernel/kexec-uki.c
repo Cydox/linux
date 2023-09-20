@@ -14,6 +14,7 @@
 #include "linux/pe.h"
 #include <linux/kexec.h>
 #include <linux/err.h>
+#include "linux/security.h"
 
 #include <asm/kexec-uki.h>
 #include <asm/kexec-bzimage64.h>
@@ -81,16 +82,17 @@ static void *uki_load(struct kimage *image, char *kernel,
 		return ERR_PTR(-EINVAL);
 
 	if (initrd_len) {
-		pr_err("UKI does not allow manual initrd");
+		pr_err("UKI does not allow manual initrd\n");
 		return ERR_PTR(-EPERM);
 	}
 
-	if (!IS_ERR(sec_cmdline) && cmdline_len != 1) {
-		pr_err("UKI does not allow manual cmdline");
+	if (!IS_ERR(sec_cmdline) && cmdline_len != 1 &&
+	    security_locked_down(LOCKDOWN_KEXEC)) {
+		pr_err("UKI does not allow manual cmdline\n");
 		return ERR_PTR(-EPERM);
 	}
 
-	if (!IS_ERR(sec_cmdline)) {
+	if (cmdline_len == 1 && !IS_ERR(sec_cmdline)) {
 		cmdline = kernel + sec_cmdline->data_addr;
 		cmdline_len = sec_cmdline->raw_data_size;
 	}
