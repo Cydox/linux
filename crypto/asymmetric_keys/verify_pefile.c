@@ -334,6 +334,14 @@ int verify_pefile_signature(const void *pebuf, unsigned pelen,
 	if (ret < 0)
 		return ret;
 
+	const struct data_dirent *certs = pebuf + ctx.cert_dirent_offset;
+
+	if (!certs->virtual_address || !certs->size) {
+		pr_warn("Unsigned PE binary\n");
+		return -ENODATA;
+	}
+
+
 	ret = pefile_strip_sig_wrapper(pebuf, &ctx);
 	if (ret < 0)
 		return ret;

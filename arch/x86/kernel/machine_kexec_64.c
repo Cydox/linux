@@ -4,6 +4,7 @@
  * Copyright (C) 2002-2005 Eric Biederman  <ebiederm@xmission.com>
  */
 
+#include "asm/kexec-uefi.h"
 #define pr_fmt(fmt)	"kexec: " fmt
 
 #include <linux/mm.h>
@@ -80,7 +81,7 @@ static int map_acpi_tables(struct x86_mapping_info *info, pgd_t *level4p) { retu
 
 #ifdef CONFIG_KEXEC_FILE
 const struct kexec_file_ops * const kexec_file_loaders[] = {
-		&kexec_bzImage64_ops,
+		&kexec_uefi_ops,
 		NULL
 };
 #endif

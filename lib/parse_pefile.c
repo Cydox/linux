@@ -56,6 +56,7 @@ int pefile_parse_binary(const void *pebuf, unsigned int pelen,
 		ctx->header_size = pe32->header_size;
 		cursor += sizeof(*pe32);
 		ctx->n_data_dirents = pe32->data_dirs;
+		ctx->entry_point = pe32->entry_point;
 		break;
 
 	case PE_OPT_MAGIC_PE32PLUS:
@@ -65,6 +66,7 @@ int pefile_parse_binary(const void *pebuf, unsigned int pelen,
 		ctx->header_size = pe64->header_size;
 		cursor += sizeof(*pe64);
 		ctx->n_data_dirents = pe64->data_dirs;
+		ctx->entry_point = pe64->entry_point;
 		break;
 
 	default:
@@ -88,18 +90,16 @@ int pefile_parse_binary(const void *pebuf, unsigned int pelen,
 		(unsigned long)&ddir->certs - (unsigned long)pebuf;
 	ctx->certs_size = ddir->certs.size;
 
-	if (!ddir->certs.virtual_address || !ddir->certs.size) {
-		pr_warn("Unsigned PE binary\n");
-		return -ENODATA;
-	}
 
-	chkaddr(ctx->header_size, ddir->certs.virtual_address,
-		ddir->certs.size);
-	ctx->sig_offset = ddir->certs.virtual_address;
-	ctx->sig_len = ddir->certs.size;
-	pr_debug("cert = %x @%x [%*ph]\n",
-		 ctx->sig_len, ctx->sig_offset,
-		 ctx->sig_len, pebuf + ctx->sig_offset);
+	if (ddir->certs.virtual_address && ddir->certs.size) {
+		chkaddr(ctx->header_size, ddir->certs.virtual_address,
+			ddir->certs.size);
+		ctx->sig_offset = ddir->certs.virtual_address;
+		ctx->sig_len = ddir->certs.size;
+		pr_debug("cert = %x @%x [%*ph]\n",
+			 ctx->sig_len, ctx->sig_offset,
+			 ctx->sig_len, pebuf + ctx->sig_offset);
+	}
 
 	ctx->n_sections = pe->sections;
 	if (ctx->n_sections > (ctx->header_size - cursor) / sizeof(*sec))

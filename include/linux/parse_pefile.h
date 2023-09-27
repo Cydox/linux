@@ -19,6 +19,8 @@ struct pefile_context {
 	unsigned	certs_size;
 	unsigned	sig_offset;
 	unsigned	sig_len;
+	uint32_t entry_point;	/* file offset of entry point */
+
 	const struct section_header *secs;
 
 	/* PKCS#7 MS Individual Code Signing content */
