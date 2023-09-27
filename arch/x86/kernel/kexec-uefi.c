@@ -42,8 +42,8 @@ static efi_status_t __efiapi _allocate_pages(int Type, int MemoryType, unsigned 
 
 static efi_status_t __noreturn __efiapi _exit(efi_handle_t ImageHandle, efi_status_t ExitStatus, unsigned long ExitDataSize, efi_char16_t *ExitData)
 {
-	pr_info("exit status is %lu", ExitStatus);
-	pr_info("expecting %lu", EFI_INVALID_PARAMETER);
+	pr_info("exit status is %lu\n", ExitStatus);
+	pr_info("expecting %lu\n", EFI_INVALID_PARAMETER);
 	_not_implemented("exit");
 
 	for(;;)
