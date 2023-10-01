@@ -7,16 +7,21 @@
  *      Jan Hendrik Farr <kernel@jfarr.cc>
  */
 
+#define pr_fmt(fmt)	"kexec-uefi: " fmt
+#include "linux/wait_bit.h"
+#include "linux/completion.h"
+
 #include "asm-generic/set_memory.h"
 #include "asm/page_types.h"
 #include "linux/compiler_attributes.h"
-#define pr_fmt(fmt)	"kexec-uefi: " fmt
+#include "linux/sched.h"
 
 #include <asm/kexec-uefi.h>
 
 #include <linux/efi.h>
 #include <asm/efi.h>
 
+#include <linux/kthread.h>
 #include <linux/kernel.h>
 #include <linux/kexec.h>
 #include <linux/err.h>
@@ -46,9 +51,7 @@ static efi_status_t __noreturn __efiapi _exit(efi_handle_t ImageHandle, efi_stat
 	pr_info("expecting %lu\n", EFI_INVALID_PARAMETER);
 	_not_implemented("exit");
 
-	for(;;)
-		asm("hlt");
-
+	kthread_exit(ExitStatus);
 }
 
 struct efi_bs_table {
@@ -144,6 +147,23 @@ static int uefi_probe(const char *buf, unsigned long len)
 	return ret;
 }
 
+struct thread_test_t {
+	efi_status_t (__efiapi *efi_entry)(efi_handle_t handle,
+				   efi_system_table_t *sys_table_arg);
+	efi_handle_t handle;
+	efi_system_table_t sys_table;
+	struct completion started;
+};
+
+static int call_entry(void *data)
+{
+	struct thread_test_t *d = data;
+	complete(&d->started);
+	unsigned long r = d->efi_entry(d->handle, &d->sys_table);
+	kthread_exit(r);
+	return 0;
+}
+
 static void *uefi_load(struct kimage *image, char *kernel,
 			    unsigned long kernel_len, char *initrd,
 			    unsigned long initrd_len, char *cmdline,
@@ -175,8 +195,21 @@ static void *uefi_load(struct kimage *image, char *kernel,
 	efi_status_t (__efiapi *efi_entry)(efi_handle_t handle,
 				   efi_system_table_t *sys_table_arg) = (void *)(kernel + pe_ctx.entry_point);
 
-	pr_info("about to call efi pe entry\n");
-	efi_entry(handle, &sys_table);
+	struct thread_test_t *tt = kmalloc(sizeof(struct thread_test_t), GFP_KERNEL);
+	tt->efi_entry = efi_entry;
+	tt->handle = handle;
+	tt->sys_table = sys_table;
+	init_completion(&tt->started);
+
+	struct task_struct *kth = kthread_run(call_entry, (void *)tt, "test uefi kthread");
+
+	wait_for_completion(&tt->started);
+	kthread_stop(kth);
+
+	set_memory_nx((unsigned long) kernel, kernel_len >> PAGE_SHIFT);
+	set_memory_rw((unsigned long) kernel, kernel_len >> PAGE_SHIFT);
+	kfree(tt);
+
 	return ERR_PTR(-ENOEXEC);
 }
 
